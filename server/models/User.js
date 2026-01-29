@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const userSchema = new mongoose.Schema({
+const userProfileSchema = new mongoose.Schema({
     username: {
         type: String,
         required: true,
@@ -13,34 +13,45 @@ const userSchema = new mongoose.Schema({
         unique: true,
         trim: true,
         lowercase: true,
-        validate: {
-            validator: function(v) {
-                return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-            },
-            message: props => `${props.value} is not a valid email!`
-        }
+        match: /.+\@.+\..+/
     },
     password: {
         type: String,
         required: true,
         minlength: 6
     },
-    createdAt: {
-        type: Date,
-        default: Date.now
+    preferences: {
+        theme: {
+            type: String,
+            enum: ['light', 'dark'],
+            default: 'light'
+        },
+        notifications: {
+            email: {
+                type: Boolean,
+                default: true
+            },
+            sms: {
+                type: Boolean,
+                default: false
+            }
+        }
     },
-    updatedAt: {
+    createdAt: {
         type: Date,
         default: Date.now
     }
 });
 
-// Middleware to update the updatedAt field before saving
-userSchema.pre('save', function(next) {
-    this.updatedAt = Date.now();
-    next();
+// Error handling for duplicate keys
+userProfileSchema.post('save', function(error, doc, next) {
+    if (error.name === 'MongoError' && error.code === 11000) {
+        next(new Error('Username or email already exists'));
+    } else {
+        next(error);
+    }
 });
 
-const User = mongoose.model('User', userSchema);
+const User = mongoose.model('User', userProfileSchema);
 
 module.exports = User;
